@@ -1,31 +1,68 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class TrapDamage : MonoBehaviour
 {
     [Header("데미지 설정")]
-    public int damageAmount = 1; // 함정이 플레이어에게 줄 데미지 양
-    
-    // 💡 Trigger 콜라이더에 다른 오브젝트가 들어왔을 때 호출됩니다.
+    public int damageAmount = 1;
+    public float damageCooldown = 1f;
+
+    [Header("튜토리얼 대화 연결")]
+    public DialogueSO trapTutorialDialogue; // Inspector에서 드래그
+
+    [Header("튜토리얼 퀘스트 ID")]
+    public string trapQuestID = "TRAP_TUTORIAL";
+
+    private float lastDamageTime = -999f;
+
+    private bool tutorialTriggered = false; 
+    // 퀘스트 + 대화 1회 제한
+
     private void OnTriggerEnter2D(Collider2D other)
     {
-        // 충돌한 오브젝트가 "Player" 태그를 가졌는지 확인
-        if (other.CompareTag("Player"))
-        {
-            // PlayerHealth 스크립트 찾기 (플레이어의 루트 오브젝트에 붙어있다고 가정)
-            // other.transform.root는 플레이어의 최상위 오브젝트를 찾습니다.
-            PlayerHealth playerHealth = other.GetComponentInParent<PlayerHealth>();
+        if (!other.CompareTag("PlayerFeet")) return;
 
-            if (playerHealth != null)
-            {
-                // 데미지를 줍니다.
-                playerHealth.TakeDamage(damageAmount);
-                
-                Debug.Log("함정 발동! 플레이어가 데미지를 입었습니다.");
-                
-                // 💡 (선택 사항) 데미지를 준 후 함정을 비활성화하거나 파괴할 수 있습니다.
-                // Destroy(gameObject); // 한 번만 발동하는 함정일 경우
-                // gameObject.SetActive(false); 
-            }
+        PlayerHealth playerHealth = other.GetComponentInParent<PlayerHealth>();
+        if (playerHealth == null) return;
+
+        // 쿨타임
+        if (Time.time - lastDamageTime < damageCooldown) return;
+
+        // 데미지     
+        playerHealth.TakeDamage(damageAmount);
+        lastDamageTime = Time.time;
+
+        Debug.Log("함정 데미지 적용됨 (입장 시)");
+    }
+
+    private void OnTriggerExit2D(Collider2D other)
+    {
+        if (!other.CompareTag("PlayerFeet")) return;
+
+        // 이미 실행했다면 무시
+        if (tutorialTriggered) return;
+
+        // 🎯 Lv_00_2에서만 튜토리얼 대화 실행
+        if (SceneManager.GetActiveScene().name != "Lv_00_2") return;
+
+        tutorialTriggered = true;
+
+        // 1) 퀘스트 완료
+        if (QuestManager.Instance != null)
+        {
+            QuestManager.Instance.CompleteQuest(trapQuestID);
+            Debug.Log("🎉 TRAP_TUTORIAL 퀘스트 완료!");
+        }
+
+        // 2) 대화 실행
+        if (DialogueManager.Instance != null && trapTutorialDialogue != null)
+        {
+            DialogueManager.Instance.StartDialogue(trapTutorialDialogue);
+            Debug.Log("💬 함정 튜토리얼 대화 시작 (트랩 벗어났을 때)");
+        }
+        else
+        {
+            Debug.LogWarning("⚠ trapTutorialDialogue 또는 DialogueManager가 설정되지 않음");
         }
     }
 }

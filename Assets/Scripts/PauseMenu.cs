@@ -28,27 +28,24 @@ public class PauseMenu : MonoBehaviour
 
     void Update()
     {
-        // 💡 [핵심 안전 장치] DialogueManager가 활성화 중일 때는 ESC 입력을 무시합니다.
-        // DialogueManager가 Time.timeScale=0f 상태를 관리하고 있으므로 Pause/Resume을 실행해서는 안됩니다.
-        if (DialogueManager.Instance != null && DialogueManager.Instance.IsActive())
-        {
-            // 대화 중에는 일시정지 로직을 실행하지 않고 즉시 종료합니다.
+        // 1) 스토리 UI 재생 중이면 ESC 완전 차단
+        if (StoryUIFader.IsStoryPlaying)
             return;
-        }
 
-        // ESC 키 입력 감지
+        // 2) 대화창 활성 상태면 ESC 완전 차단
+        if (DialogueManager.Instance != null && DialogueManager.Instance.IsActive())
+            return;
+
+        // 3) ESC 입력 처리 (오직 여기에서 단 한 번만)
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             if (isGamePaused)
-            {
-                Resume(); // 일시정지 상태면 재개
-            }
+                Resume();
             else
-            {
-                Pause(); // 플레이 중이면 일시정지
-            }
+                Pause();
         }
     }
+
 
     /// <summary>
     /// 게임을 재개하고 UI를 숨깁니다.

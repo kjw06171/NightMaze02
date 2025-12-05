@@ -154,18 +154,38 @@ MonoBehaviour:
   - questID: TUTORIAL_MOVE
     displayName: "WASD\uB97C \uB20C\uB7EC \uC6C0\uC9C1\uC5EC\uBCF4\uC138\uC694."
     prerequisiteID: 
+    isMainQuest: 0
+    isProgressQuest: 1
+    currentCount: 0
+    targetCount: 1
   - questID: CANDLE
     displayName: "\uCD08\uB97C \uD68D\uB4DD\uD558\uC2DC\uC624."
     prerequisiteID: TUTORIAL_MOVE
+    isMainQuest: 0
+    isProgressQuest: 1
+    currentCount: 0
+    targetCount: 1
   - questID: CANDLE_TOGGLE
     displayName: "2\uBC88\uD0A4\uB97C \uB20C\uB7EC \uCD08\uB97C \uAED0\uB2E4 \uCF1C\uBCF4\uC138\uC694."
     prerequisiteID: CANDLE
+    isMainQuest: 0
+    isProgressQuest: 1
+    currentCount: 0
+    targetCount: 1
   - questID: MANSION_KEY
     displayName: "\uC800\uD0DD \uC548\uC73C\uB85C \uB4E4\uC5B4\uAC00\uC138\uC694."
     prerequisiteID: CANDLE_TOGGLE
+    isMainQuest: 0
+    isProgressQuest: 1
+    currentCount: 0
+    targetCount: 1
   - questID: TRAP_TUTORIAL
     displayName: "\uC55E\uC73C\uB85C \uC774\uB3D9\uD558\uC138\uC694."
     prerequisiteID: MANSION_KEY
+    isMainQuest: 0
+    isProgressQuest: 0
+    currentCount: 0
+    targetCount: 1
 --- !u!4 &66709053
 Transform:
   m_ObjectHideFlags: 0
@@ -13854,6 +13874,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 3
+  deathUI: {fileID: 0}
+  flashDuration: 0.1
+  flashCount: 2
 --- !u!114 &1347804730
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -102006,8 +102029,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemID: CANDLE
   dialogueData: {fileID: 11400000, guid: f79e7d724b77a464b921f5c07de0ca09, type: 2}
+  storyUIPanel: {fileID: 0}
   useNotificationUI: 1
   interactionMessage: "E\uD0A4\uB97C \uB20C\uB7EC \uD68D\uB4DD"
+  requiredQuestID: 
+  lockedMessage: "[\uC7A0\uAE40] \uC120\uD589 \uD018\uC2A4\uD2B8\uB97C \uC644\uB8CC\uD558\uC138\uC694"
   interactionKey: 101
 --- !u!50 &2006101033
 Rigidbody2D:
@@ -102077,7 +102103,7 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: -738433627
+  m_SortingLayerID: -456412949
   m_SortingLayer: 3
   m_SortingOrder: 0
   m_Sprite: {fileID: 2798290011037525337, guid: bb4ec7ec87a673f4380d682e3f9620dd, type: 3}

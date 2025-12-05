@@ -9,5 +9,13 @@ public static class GameState
     // 기본값은 false이며, 획득해야만 true로 설정되어 빛 조절이 가능해집니다.
     public static bool HasCandle { get; set; } = false;
 
+    // HP 공유 (이미 있음)
+    public static int SharedHealth = 0;
+
+    // 🔥 LightControl 공유 타이머 (0~duration 사이 값)
+    public static float SharedLightTimer = 0f;
+
+
+
     // 💡 필요하다면 다른 전역 상태 변수들을 여기에 추가할 수 있습니다.
 }

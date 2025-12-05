@@ -3,7 +3,9 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 3
-  tags: []
+  tags:
+  - PlayerFeet
+  - PlayerSensor
   layers:
   - Default
   - TransparentFX
@@ -48,7 +50,7 @@ TagManager:
     uniqueID: 8126643
     locked: 0
   - name: Item
-    uniqueID: 3556533669
+    uniqueID: 3838554347
     locked: 0
   - name: Character
     uniqueID: 742066533

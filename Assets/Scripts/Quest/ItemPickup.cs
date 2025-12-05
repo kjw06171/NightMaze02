@@ -1,37 +1,50 @@
 using UnityEngine;
 using System; // Action 사용을 위해 추가
+using UnityEngine.SceneManagement;
+
 
 /// <summary>
-/// 상호작용(E 키)을 통해 아이템을 획득하고, 대화를 시작하며,
-/// 동시에 근처에 있을 때 상호작용 알림 메시지를 표시하는 스크립트입니다. (NotificationTrigger 기능 통합)
+/// 상호작용(E 키)으로 아이템 획득 + 대화 실행 + 스토리 UI 표시 + 선행퀘스트 체크
 /// </summary>
-[RequireComponent(typeof(Collider2D))] 
+[RequireComponent(typeof(Collider2D))]
 public class ItemPickup : MonoBehaviour
 {
     [Header("아이템 정보")]
-    public string itemID = "KEY_A"; 
-    
+    public string itemID = "KEY_A";
+
     [Header("대화 데이터 연결")]
-    [SerializeField] 
-    private DialogueSO dialogueData; 
-    
+    [SerializeField]
+    private DialogueSO dialogueData;
+
+    [Header("스토리 UI (선택)")]
+    public GameObject storyUIPanel;          // ← Story UI 패널 (없어도 OK)
+
     [Header("상호작용 알림 설정")]
     public bool useNotificationUI = true;
     public string interactionMessage = "E키를 눌러 획득";
+
+    [Header("선행 퀘스트 설정")]
+    public string requiredQuestID = "";       // 빈 값이면 선행퀘 없음
+    public string lockedMessage = "[잠김] 선행 퀘스트를 완료하세요";
+
+    [Header("입력키")]
     public KeyCode interactionKey = KeyCode.E;
 
     private bool playerInRange = false;
     private bool isInteractable = true;
 
+
+
+    // ==========================================================
+    // 초기 설정
+    // ==========================================================
     void Start()
     {
         Collider2D col = GetComponent<Collider2D>();
         if (col != null && !col.isTrigger)
-        {
             Debug.LogWarning($"[ItemPickup] 콜라이더가 Trigger가 아닙니다: {gameObject.name}");
-        }
 
-        // 이미 CANDLE을 먹은 상태면 제거
+        // 이미 CANDLE 먹었으면 제거
         if (itemID == "CANDLE" && GameState.HasCandle)
         {
             isInteractable = false;
@@ -40,91 +53,150 @@ public class ItemPickup : MonoBehaviour
         }
     }
 
+
+
+    // ==========================================================
+    // Update – 아이템 획득 처리
+    // ==========================================================
     void Update()
     {
-        if (playerInRange && isInteractable && Input.GetKeyDown(interactionKey))
+        if (!playerInRange || !isInteractable)
+            return;
+
+        // 선행 퀘스트 미완료 → 획득 불가
+        if (!IsPrerequisiteCleared())
+            return;
+
+        if (Input.GetKeyDown(interactionKey))
         {
-            bool isDialogueActive = (DialogueManager.Instance != null && DialogueManager.Instance.IsActive());
+            bool isDialogueActive =
+                (DialogueManager.Instance != null && DialogueManager.Instance.IsActive());
+
             if (!isDialogueActive)
                 PickUp();
         }
     }
 
+
+
+    // ==========================================================
+    // 선행 퀘스트 완료 여부 체크
+    // ==========================================================
+    private bool IsPrerequisiteCleared()
+    {
+        if (string.IsNullOrEmpty(requiredQuestID))
+            return true;
+
+        if (QuestManager.Instance == null)
+            return true;
+
+        return QuestManager.Instance.IsQuestDone(requiredQuestID);
+    }
+
+
+
+    // ==========================================================
+    // 플레이어 트리거 진입
+    // ==========================================================
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (other.CompareTag("Player") && isInteractable)
-        {
-            playerInRange = true;
+        if (!other.CompareTag("Player") || !isInteractable)
+            return;
 
-            if (useNotificationUI && FloatingNotificationUI.Instance != null)
-            {
-                FloatingNotificationUI.Instance.ShowNotification(interactionMessage, false);
-            }
-        }
+        playerInRange = true;
+
+        if (!useNotificationUI || FloatingNotificationUI.Instance == null)
+            return;
+
+        // 🔒 잠김 상태 UI 표시
+        if (!IsPrerequisiteCleared())
+            FloatingNotificationUI.Instance.ShowNotification(lockedMessage, false);
+        else
+            FloatingNotificationUI.Instance.ShowNotification(interactionMessage, false);
     }
 
     private void OnTriggerExit2D(Collider2D other)
     {
-        if (other.CompareTag("Player"))
-        {
-            playerInRange = false;
+        if (!other.CompareTag("Player"))
+            return;
 
-            if (useNotificationUI && FloatingNotificationUI.Instance != null)
-            {
-                FloatingNotificationUI.Instance.HideNotification();
-            }
-        }
+        playerInRange = false;
+
+        if (useNotificationUI && FloatingNotificationUI.Instance != null)
+            FloatingNotificationUI.Instance.HideNotification();
     }
 
+
+
+    // ==========================================================
+    // PickUp – 아이템 획득
+    // ==========================================================
     private void PickUp()
     {
         isInteractable = false;
 
         if (useNotificationUI && FloatingNotificationUI.Instance != null)
-        {
             FloatingNotificationUI.Instance.HideNotification();
-        }
 
-        // 🔥 횃불 상태 업데이트
+        // 🔥 CANDLE 상태 업데이트
         if (itemID == "CANDLE")
-        {
             GameState.HasCandle = true;
-            Debug.Log("🔥 횃불 획득! GameState.HasCandle = true");
+
+        // ======================================================
+        // 🔥 스토리 UI 플레이 → 끝난 뒤 대화 시작하기
+        // ======================================================
+        if (storyUIPanel != null)
+        {
+            StoryUIFader fader = storyUIPanel.GetComponent<StoryUIFader>();
+            if (fader != null)
+            {
+                // 스토리 UI 끝난 후 대화 시작
+                fader.Play(() =>
+                {
+                    StartItemDialogue();
+                });
+                return; // 대화는 콜백에서 실행되므로 여기서 종료
+            }
+            else
+            {
+                storyUIPanel.SetActive(true);
+            }
         }
 
-        // 대화 매니저 체크
+        // 스토리 UI가 없으면 즉시 대화 실행
+        StartItemDialogue();
+    }
+
+    private void StartItemDialogue()
+    {
+        // DialogueManager가 없으면 즉시 종료 처리
         if (DialogueManager.Instance == null)
         {
-            Debug.LogError("DialogueManager가 없음 → 대화 없이 퀘스트만 완료");
             OnDialogueEnd();
             return;
         }
 
-        // 대화가 있을 때
+        // 대화 실행
         if (dialogueData != null)
         {
             DialogueManager.Instance.StartDialogue(dialogueData, OnDialogueEnd);
         }
         else
         {
-            Debug.LogWarning($"{itemID}는 DialogueSO 없음 → 즉시 완료");
             OnDialogueEnd();
         }
     }
 
-    /// <summary>
-    /// 대화가 종료된 뒤 호출되는 콜백
-    /// </summary>
+
+
+    // ==========================================================
+    // 대화 종료 후 콜백
+    // ==========================================================
     private void OnDialogueEnd()
     {
-        // 🔥🔥🔥 여기만 수정됨! NotifyItemCollected → CompleteQuest
         if (QuestManager.Instance != null)
-        {
             QuestManager.Instance.CompleteQuest(itemID);
-            Debug.Log($"퀘스트 완료: {itemID}");
-        }
 
         Destroy(gameObject);
-        Debug.Log($"아이템 파괴 완료: {itemID}");
     }
 }

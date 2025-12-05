@@ -5,6 +5,7 @@ using UnityEngine.SceneManagement;
 public class LightControl : MonoBehaviour
 {
     private const string STARTING_SCENE_NAME = "Lv_00_1";
+    private const string SECOND_SCENE_NAME = "Lv_00_2";   // 🔥 추가
     private const string CANDLE_TUTORIAL_ID = "CANDLE_TOGGLE";
 
     private Light2D playerLight;
@@ -22,8 +23,7 @@ public class LightControl : MonoBehaviour
     [SerializeField] private DialogueSO toggleTutorialDialogue;
 
     [Header("UI 연결")]
-    [SerializeField] private GameObject lightGaugeUI; 
-    // 🔥 LightGaugeUI를 Inspector에서 연결
+    [SerializeField] private GameObject lightGaugeUI;
 
     private float timer = 0f;
     private bool isLightOn = false;
@@ -43,16 +43,31 @@ public class LightControl : MonoBehaviour
         string scene = SceneManager.GetActiveScene().name;
         bool isTutorialScene = scene == STARTING_SCENE_NAME;
 
-        // 🔥 튜토리얼에서는 UI 숨기기
+        // ----------------------------------------------------------------------
+        // 🔥 Lv_00_1 ↔ Lv_00_2 사이에서는 SharedLightTimer 값을 불러옴
+        // ----------------------------------------------------------------------
+        if (scene == STARTING_SCENE_NAME || scene == SECOND_SCENE_NAME)
+        {
+            timer = Mathf.Clamp(GameState.SharedLightTimer, 0f, duration);
+
+            float t = Mathf.Clamp01(timer / duration);
+            playerLight.pointLightOuterRadius = Mathf.Lerp(startRadius, endRadius, t);
+            playerLight.intensity = Mathf.Lerp(startIntensity, endIntensity, t);
+        }
+        else
+        {
+            timer = 0f; // 다른 씬에서는 초기화
+        }
+
+        // 튜토리얼에서는 UI 숨기기
         if (isTutorialScene && lightGaugeUI != null)
             lightGaugeUI.SetActive(false);
 
-        // 튜토리얼이 아니면 토글 제한 해제
+        // 일반 씬은 토글 제한 없음
         if (!isTutorialScene)
         {
             hasToggleQuestCompleted = true;
 
-            // 일반 씬에서는 라이트 게이지 기본 ON
             if (lightGaugeUI != null)
                 lightGaugeUI.SetActive(true);
         }
@@ -88,37 +103,25 @@ public class LightControl : MonoBehaviour
             isLightOn = !isLightOn;
             playerLight.enabled = isLightOn;
 
-            // 🌟 튜토리얼에서 첫 켜짐
             if (isTutorialScene && isLightOn && !wasLightOn && !hasToggleQuestCompleted)
             {
-                // UI 켜기 🔥🔥🔥
                 if (lightGaugeUI != null)
                     lightGaugeUI.SetActive(true);
 
-                // 퀘스트 완료
                 if (QuestManager.Instance != null)
-                {
                     QuestManager.Instance.CompleteQuest(CANDLE_TUTORIAL_ID);
-                }
 
                 hasToggleQuestCompleted = true;
 
-                // 대화 실행
                 if (DialogueManager.Instance != null && toggleTutorialDialogue != null)
-                {
                     DialogueManager.Instance.StartDialogue(toggleTutorialDialogue);
-                }
-                else
-                {
-                    Debug.LogWarning("대화 SO가 없거나 DialogueManager가 없습니다.");
-                }
             }
         }
     }
 
 
     // ---------------------------------------------------------
-    // 🔥 빛 소모 처리
+    // 🔥 빛 소모 처리 + 공유 저장
     // ---------------------------------------------------------
     private void HandleConsumption()
     {
@@ -130,6 +133,9 @@ public class LightControl : MonoBehaviour
         playerLight.pointLightOuterRadius = Mathf.Lerp(startRadius, endRadius, t);
         playerLight.intensity = Mathf.Lerp(startIntensity, endIntensity, t);
 
+        // 🔥 값이 변할 때마다 SharedLightTimer 저장
+        SaveSharedLight();
+
         if (t >= 1f)
         {
             isLightOn = false;
@@ -140,7 +146,7 @@ public class LightControl : MonoBehaviour
 
 
     // ---------------------------------------------------------
-    // 🔥 회복 아이템 처리
+    // 🔥 회복 아이템 처리 + 공유 저장
     // ---------------------------------------------------------
     public void RestoreLight(float percentageChange)
     {
@@ -152,11 +158,26 @@ public class LightControl : MonoBehaviour
         float t = Mathf.Clamp01(timer / duration);
         playerLight.pointLightOuterRadius = Mathf.Lerp(startRadius, endRadius, t);
         playerLight.intensity = Mathf.Lerp(startIntensity, endIntensity, t);
+
+        // 🔥 회복 후 저장
+        SaveSharedLight();
     }
 
 
     public bool IsFuelFull()
     {
         return timer <= 0.001f;
+    }
+
+    // ---------------------------------------------------------
+    // 🔥 공유 저장 함수
+    // ---------------------------------------------------------
+    private void SaveSharedLight()
+    {
+        string scene = SceneManager.GetActiveScene().name;
+
+        // 두 씬에서만 공유 저장
+        if (scene == STARTING_SCENE_NAME || scene == SECOND_SCENE_NAME)
+            GameState.SharedLightTimer = timer;
     }
 }
